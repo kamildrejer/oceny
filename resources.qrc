@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/oceny" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>

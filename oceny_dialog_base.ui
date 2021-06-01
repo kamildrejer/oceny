@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OcenyDialogBase</class>
+ <widget class="QDialog" name="OcenyDialogBase">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>569</width>
+    <height>554</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Oceny</string>
+  </property>
+  <widget class="QDialogButtonBox" name="button_box">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>490</y>
+     <width>341</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
+   </property>
+   <property name="standardButtons">
+    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   </property>
+  </widget>
+  <widget class="QTabWidget" name="tabWidget">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>10</y>
+     <width>531</width>
+     <height>481</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="QWidget" name="tab">
+    <attribute name="title">
+     <string>Główne</string>
+    </attribute>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>140</y>
+       <width>531</width>
+       <height>221</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Dane projektowe</string>
+     </property>
+     <widget class="QWidget" name="verticalLayoutWidget_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>511</width>
+        <height>191</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Obszar inwestycji</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="obszar"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Oś inwestycji</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="os"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Kilometraż</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="km"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>10</y>
+       <width>531</width>
+       <height>121</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Warstwa lub pliki z wynikami inwentaryzacji</string>
+     </property>
+     <widget class="QWidget" name="verticalLayoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>511</width>
+        <height>91</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QgsMapLayerComboBox" name="layer_proj"/>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkFolder">
+         <property name="text">
+          <string>Chcę wczytać cały folder z warstwami</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsFileWidget" name="pliki_list">
+         <property name="filter">
+          <string>*shp</string>
+         </property>
+         <property name="storageMode">
+          <enum>QgsFileWidget::GetMultipleFiles</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>370</y>
+       <width>531</width>
+       <height>81</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Lokalizacja folderu z wynikami</string>
+     </property>
+     <widget class="QWidget" name="verticalLayoutWidget_3">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>511</width>
+        <height>51</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QgsFileWidget" name="output_path">
+         <property name="fileWidgetButtonVisible">
+          <bool>true</bool>
+         </property>
+         <property name="fullUrl">
+          <bool>false</bool>
+         </property>
+         <property name="dialogTitle">
+          <string>Lokalizacja pliku wynikowego</string>
+         </property>
+         <property name="filter">
+          <string>*.shp</string>
+         </property>
+         <property name="storageMode">
+          <enum>QgsFileWidget::GetDirectory</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_2">
+    <attribute name="title">
+     <string>Teren</string>
+    </attribute>
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>150</y>
+       <width>531</width>
+       <height>321</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Charakterystyka terenu</string>
+     </property>
+     <widget class="QWidget" name="verticalLayoutWidget_4">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>511</width>
+        <height>291</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_4">
+       <item>
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Lasy</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="lasy"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Jeziora</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="jeziora"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Rzeki</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="rzeki"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Szuwary</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="szuwar"/>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Rzeki</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsMapLayerComboBox" name="km_4"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsFileWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfilewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsMapLayerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgsmaplayercombobox.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>button_box</sender>
+   <signal>accepted()</signal>
+   <receiver>OcenyDialogBase</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>button_box</sender>
+   <signal>rejected()</signal>
+   <receiver>OcenyDialogBase</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>20</x>
+     <y>20</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
