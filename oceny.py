@@ -87,6 +87,8 @@ class Oceny:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
+
+        self.root_dir = 'G:\\Dyski współdzielone\\1_Public\\QGiS\DANE\\03_BDOT10k'
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
@@ -185,6 +187,32 @@ class Oceny:
                 return True
         return False
 
+    def make_output_folder(self, folder):
+        output_dir_path = os.path.join(self.root_dir, folder)
+        try:
+            os.mkdir(output_dir_path)
+        except:
+            pass
+
+    def tnij(self, layer_file, layer, overlay, output_dir):
+        context = QgsProcessingContext()
+        results = {}
+        outputs = {}
+        if len(layer_file)>0 and len(layer)>0 and len(overlay)>0 and len(output_dir)>0:           
+            output_dir_path = os.path.join(self.root_dir, output_dir)
+            self.make_output_folder(output_dir_path)
+            output_file = self.makepath_gpkg(output_dir_path, layer_file, layer, 'out')
+
+            alg_params = {
+                'INPUT': self.makepath_gpkg('',layer_file,layer, 'in' ),
+                'OVERLAY': overlay,# self.makepath_gpkg('',overlay_file,overlay, 'in' ),
+                'OUTPUT': output_file, #parameters['Wynik']
+            }
+            
+            outputs['Przytnij'] = processing.run('native:clip', alg_params, context=context, is_child_algorithm=True)
+            results['Wynik'] = outputs['Przytnij']['OUTPUT']
+            return results['Wynik']
+
     def error_status(self, code):
         self.code = code
         if code == 1:
@@ -249,12 +277,12 @@ class Oceny:
         # print(result)
         if result==1:
             error = False
-
+            warstwa_zasiegu = self.dlg.zakres.currentLayer().source()
             warstwy = LoadLayers()
             layers_teren = []
             if self.dlg.groupBox_3.isChecked():
                 
-                layers_teren.append(self.makepath_gpkg('G:\\Dyski współdzielone\\1_Public\\QGiS\DANE\\03_BDOT10k', 'warstwyBDOT10k.gpkg', 'A_PTLZ', 'in'))
+                layers_teren.append(self.tnij('warstwyBDOT10k.gpkg', 'A_PTLZ', warstwa_zasiegu,  'cut') )
 
                 warstwy.loadLayersFromStringList(layers_teren)
                 print(layers_teren)
@@ -270,6 +298,7 @@ class Oceny:
 
             #sprawdź poprawność warstw
             if self.error_status(warstwy.checkLayerValidity()) != 0:
+
                 return
 
             os_inst  = LoadLayers() #nowa instancja obiektu
@@ -369,7 +398,7 @@ class Oceny:
             paths_to_merge = {}
             for prefix in prefixes:
                 # Path
-                print(prefix)
+                #print(prefix)
                 directory = re.sub('_', '', prefix)
                 error = error|self.mkdir_and_remove(parent_dir, directory)
 
@@ -387,8 +416,8 @@ class Oceny:
 
                     #Twórz indeks przestrzenny dla warstwy z kilometrażem
                     if self.dlg.checkBox_km.isChecked():
-                        print(km_inst_by_prefix)
-                        print(prefix)
+                        #print(km_inst_by_prefix)
+                        #print(prefix)
                         spIndex = km_inst_by_prefix.makeSpatialIndex()
 
                     #Pętla po każdej warstwie
@@ -410,6 +439,18 @@ class Oceny:
                         crs_system92 = QgsCoordinateReferenceSystem(crs92)
                         root = QgsProject.instance().layerTreeRoot()
                         destination = path +'\\'+layer_orygin.name() #'C:\temp\a.shp'
+
+
+                        # ZMIENIĆ OPCJĘ ZAPISU NA V3
+                        #options = QgsVectorFileWriter.SaveVectorOptions()
+                        #options.driverName = "GPKG"
+                        #options.layerName = 'test'
+                        #options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+                        #QgsVectorFileWriter.writeAsVectorFormatV3(
+                        #    vl,
+                        #    r"D:\test.gpkg",
+                        #    QgsProject.instance().transformContext(),
+                        #    options)
 
                         if self.dlg.output_virt.isChecked():
                             root.addLayer(layer_orygin)
@@ -439,7 +480,7 @@ class Oceny:
                             output_shp = output
 
                         layer_paths_and_prefix = layer_klasa.getResultPathsAndPrefix()
-                        print(layer_paths_and_prefix)
+                        #print(layer_paths_and_prefix)
                         zlacz_warianty = ZlaczWarianty(layer_paths_and_prefix)
 
                         warstwy_zlaczone = zlacz_warianty.mergeLayers(output_shp)
