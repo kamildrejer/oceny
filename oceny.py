@@ -29,16 +29,16 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from PyQt5 import QtCore, QtGui, QtWidgets #works for pyqt5
-from qgis.gui import QgsFileWidget
+from qgis.gui import QgsFileWidget, QgsLayerTreeView    
 
 from qgis.core import QgsVectorLayerJoinInfo
-from qgis.core import QgsProject
-from qgis.core import QgsField
+from qgis.core import QgsProject, QgsMarkerSymbol, QgsLineSymbol
+from qgis.core import QgsField, QgsGeometryGeneratorSymbolLayer
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsVectorLayer#, QgsDataSourceUri
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsCoordinateTransformContext
-from qgis.core import QgsVectorFileWriter
-from qgis.core import Qgis, QgsSpatialIndex
+from qgis.core import QgsVectorFileWriter, QgsSymbol, QgsPalLayerSettings, QgsTextFormat, QgsTextBufferSettings, QgsVectorLayerSimpleLabeling
+from qgis.core import Qgis, QgsRenderContext 
 from qgis.core import (
   QgsGeometry, QgsGeometryCollection,
   QgsPoint,
@@ -83,6 +83,7 @@ class Oceny:
 
     def __init__(self, iface):
         # Save reference to the QGIS interface
+        self.dlg = OcenyDialog()
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -98,15 +99,24 @@ class Oceny:
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
 
+
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Oceny')
 
+        self.dlg.buttonUsunStyl.clicked.connect(self.czysc_styl)
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
     # noinspection PyMethodMayBeStatic
+    def czysc_styl(self):
+        layer = iface.activeLayer()
+        layer.setLabelsEnabled(False)
+        symbol = layer.renderer().symbols(QgsRenderContext())[0]
+        symbol.deleteSymbolLayer(1)
+        layer.triggerRepaint()
+
     def tr(self, message):
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('Oceny', message)
@@ -228,7 +238,7 @@ class Oceny:
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
-            self.dlg = OcenyDialog()
+            
 
         self.dlg.obszar.setFilters(QgsMapLayerProxyModel.PolygonLayer)
         self.dlg.os.setFilters(QgsMapLayerProxyModel.LineLayer)
@@ -236,6 +246,9 @@ class Oceny:
 
         #do aktualizacji pola z kilometrazem
         self.dlg.mFieldComboBox.setLayer(self.dlg.km.currentLayer())
+        self.dlg.pole_do_dopisania.setLayer(self.dlg.warstwa_do_dopisania.currentLayer())
+
+        self.dlg.mFieldComboBox_StanZach.setLayer(self.dlg.layer_proj.currentLayer())
 
         self.dlg.groupBox_2_km.isChecked()
         self.dlg.groupBox_2_os.isChecked()
@@ -249,28 +262,6 @@ class Oceny:
         # print(result)
         if result==1:
             error = False
-
-            warstwy = LoadLayers()
-            layers_teren = []
-            if self.dlg.groupBox_3.isChecked():
-                
-                layers_teren.append(self.makepath_gpkg('G:\\Dyski współdzielone\\1_Public\\QGiS\DANE\\03_BDOT10k', 'warstwyBDOT10k.gpkg', 'A_PTLZ', 'in'))
-
-                warstwy.loadLayersFromStringList(layers_teren)
-                print(layers_teren)
-
-            else:
-                #sprawdź czy zaznaczno opcję wyboru całego folderu
-                if not self.dlg.checkFolder.isChecked():
-                    #jeżeli nie cały folder, dodaj do listy warstw warstwę z pola wyboru
-                    warstwy.loadLayer(self.dlg.layer_proj.currentLayer(),'')
-                else:
-                    #jeśli tak, dodaj pliki z listy do listy layers_temp
-                    warstwy.loadLayersFromStringList(QgsFileWidget.splitFilePaths(self.dlg.pliki_list.filePath()))
-
-            #sprawdź poprawność warstw
-            if self.error_status(warstwy.checkLayerValidity()) != 0:
-                return
 
             os_inst  = LoadLayers() #nowa instancja obiektu
             km_inst = LoadLayers() #nowa instancja obiektu
@@ -286,6 +277,7 @@ class Oceny:
                 km_checked = self.dlg.checkBox_km.isChecked()
                 os_checked = self.dlg.checkBox_os.isChecked()
                 pas_checked = self.dlg.checkBox_pas.isChecked()
+                pole_dod_checked = self.dlg.checkBox_pole_dod.isChecked()
                 prefixes = {'wyniki_'}
 
             else:
@@ -298,6 +290,84 @@ class Oceny:
                 os_checked = self.dlg.groupBox_2_os.isChecked()
                 pas_checked = self.dlg.groupBox_2_pas.isChecked()
                 prefixes = os_inst.getPrefixes()
+
+            if self.dlg.checkbox_styl.isChecked():
+                layer = iface.activeLayer()
+
+                generator = QgsGeometryGeneratorSymbolLayer.create({})
+                generator.setSymbolType(QgsSymbol.Line)
+                if self.dlg.WarstwaLiniiStylu.currentText() == 'kilometraż':
+                    expression = '''
+                    make_line(closest_point ($geometry, overlay_nearest( layer:=\'{km}\', expression:=$geometry)[0]), overlay_nearest( layer:=\'{km}\', expression:=$geometry)[0])
+                    '''.format( km = self.dlg.km.currentLayer().id() )
+                else:
+                    expression = '''                   
+                    make_line(closest_point ($geometry, overlay_nearest( layer:=\'{pas}\', expression:=$geometry)[0]), closest_point (overlay_nearest( layer:=\'{pas}\', expression:=$geometry)[0], $geometry))
+                    '''.format( pas = self.dlg.obszar.currentLayer().id() )
+                generator.setGeometryExpression(expression)
+                generator.setColor(QColor("blue"))
+                symbol = layer.renderer().symbols(QgsRenderContext())[0]
+                symbol.insertSymbolLayer(1, generator)
+
+                layer_settings  = QgsPalLayerSettings()
+                text_format = QgsTextFormat()
+
+                text_format.setFont(QFont("Arial",8))
+                text_format.setSize(6)
+
+                buffer_settings = QgsTextBufferSettings()
+                buffer_settings.setEnabled(True)
+                buffer_settings.setSize(0.5)
+                buffer_settings.setColor(QColor("white"))
+
+                text_format.setBuffer(buffer_settings)
+                layer_settings.setFormat(text_format)
+                if self.dlg.WarstwaLiniiStylu.currentText() == 'kilometraż':
+                    layer_settings.fieldName = '''
+                         case when  round(  area(overlay_intersects( layer:=\'{polygon}\', expression:=$geometry) [0])/10000,2) > 0 then 
+                         round(  area(intersection($geometry,overlay_intersects( layer:=\'{polygon}\', expression:=$geometry) [0]))/10000,2)||' ha'  else round(length(make_line(closest_point ($geometry, overlay_nearest( layer:=\'{km}\', expression:=$geometry)[0]), overlay_nearest( layer:=\'{km}\', expression:=$geometry)[0])),2)||'\n'||
+                         overlay_nearest( layer:=\'{km}\', expression:=to_string(floor(\"{kmfield}\"/1000))  || '+' || lpad(to_string(\"{kmfield}\"%1000),3,'0'))[0]
+                          end             
+                    '''.format(polygon = self.dlg.obszar.currentLayer().id(), km = self.dlg.km.currentLayer().id(), kmfield=self.dlg.mFieldComboBox.currentField() )
+                else:
+                    layer_settings.fieldName = '''
+
+                         round(length(make_line(closest_point ($geometry, overlay_nearest( layer:=\'{polygon}\', expression:=$geometry)[0]), closest_point (overlay_nearest( layer:=\'{polygon}\', expression:=$geometry)[0], $geometry))),2)||'\n'||
+                         overlay_nearest( layer:=\'{km}\', expression:=to_string(floor(\"{kmfield}\"/1000))  || '+' || lpad(to_string(\"{kmfield}\"%1000),3,'0'))[0]                                    
+                    '''.format(polygon = self.dlg.obszar.currentLayer().id(), km = self.dlg.km.currentLayer().id(), kmfield=self.dlg.mFieldComboBox.currentField() )
+                layer_settings.isExpression = True
+                layer_settings.placement = 2
+
+                layer_settings.enabled = True
+
+                layer_settings = QgsVectorLayerSimpleLabeling(layer_settings)
+                layer.setLabelsEnabled(True)
+                layer.setLabeling(layer_settings)
+
+                layer.triggerRepaint()
+                iface.mapCanvas().refresh()
+
+                return
+
+            warstwy = LoadLayers()
+            layers_teren = []
+
+            if self.dlg.checkbox_analiza_terenu.isChecked():                
+                layers_teren.append(self.makepath_gpkg('G:\\Dyski współdzielone\\1_Public\\QGiS\DANE\\03_BDOT10k', 'warstwyBDOT10k.gpkg', 'A_PTLZ', 'in'))
+                warstwy.loadLayersFromStringList(layers_teren)
+
+            else:
+                #sprawdź czy zaznaczno opcję wyboru całego folderu
+                if not self.dlg.checkFolder.isChecked():
+                    #jeżeli nie cały folder, dodaj do listy warstw warstwę z pola wyboru
+                    warstwy.loadLayer(self.dlg.layer_proj.currentLayer(),'')
+                else:
+                    #jeśli tak, dodaj pliki z listy do listy layers_temp
+                    warstwy.loadLayersFromStringList(QgsFileWidget.splitFilePaths(self.dlg.pliki_list.filePath()))
+
+            #sprawdź poprawność warstw
+            if self.error_status(warstwy.checkLayerValidity()) != 0:
+                return
 
             # Parent Directory path
             parent_dir = self.dlg.output_path.filePath()
@@ -369,7 +439,7 @@ class Oceny:
             paths_to_merge = {}
             for prefix in prefixes:
                 # Path
-                print(prefix)
+                #print(prefix)
                 directory = re.sub('_', '', prefix)
                 error = error|self.mkdir_and_remove(parent_dir, directory)
 
@@ -387,8 +457,8 @@ class Oceny:
 
                     #Twórz indeks przestrzenny dla warstwy z kilometrażem
                     if self.dlg.checkBox_km.isChecked():
-                        print(km_inst_by_prefix)
-                        print(prefix)
+                        #print(km_inst_by_prefix)
+                        #print(prefix)
                         spIndex = km_inst_by_prefix.makeSpatialIndex()
 
                     #Pętla po każdej warstwie
@@ -406,7 +476,23 @@ class Oceny:
                             kmfield = self.dlg.mFieldComboBox.fields().indexFromName(self.dlg.mFieldComboBox.currentField())
                         layer_orygin_klasa.przeciecia(km_inst_by_prefix, os_inst_by_prefix, obszar_inst_by_prefix, km_checked, os_checked, pas_checked, kmfield)
 
-                        layer_orygin = layer_orygin_klasa.getLayer()
+                        if self.dlg.checkBox_pole_dod.isChecked():
+                            obrobka = ObrobkaWarstw()
+                            layer_input = layer_orygin_klasa.getLayer()
+                            warstwa_obrobiona = obrobka.dodaj_atrybut_z_warstwy(self.dlg.warstwa_do_dopisania.currentLayer(), self.dlg.pole_do_dopisania.currentField(), layer_input)
+                            layer_orygin_obr = QgsProcessingUtils.mapLayerFromString(warstwa_obrobiona[1], warstwa_obrobiona[0])
+                            ###########
+                        else:
+                            layer_orygin_obr = layer_orygin_klasa.getLayer()
+
+                        if self.dlg.checkBox_oceny.isChecked():
+                            oceny = OcenyPlatow()
+                            warstwy_z_ocenami = oceny.licz_oceny(layer_orygin_obr)
+                            layer_orygin = QgsProcessingUtils.mapLayerFromString(warstwy_z_ocenami[1], warstwy_z_ocenami[0])
+                            ###########
+                        else:
+                            layer_orygin = layer_orygin_obr
+
                         crs_system92 = QgsCoordinateReferenceSystem(crs92)
                         root = QgsProject.instance().layerTreeRoot()
                         destination = path +'\\'+layer_orygin.name() #'C:\temp\a.shp'
@@ -439,7 +525,7 @@ class Oceny:
                             output_shp = output
 
                         layer_paths_and_prefix = layer_klasa.getResultPathsAndPrefix()
-                        print(layer_paths_and_prefix)
+                        #print(layer_paths_and_prefix)
                         zlacz_warianty = ZlaczWarianty(layer_paths_and_prefix)
 
                         warstwy_zlaczone = zlacz_warianty.mergeLayers(output_shp)

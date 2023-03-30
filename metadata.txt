@@ -4,9 +4,9 @@
 
 [general]
 name=Oceny
-qgisMinimumVersion=3.0
+qgisMinimumVersion=3.14
 description=Narzędzie do wykonywania ocen oddziaływania inwestycji na przyrodę.
-version=0.1
+version=2.5
 author=Kamil Drejer
 email=klamot@gmail.com
 

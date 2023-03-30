@@ -26,6 +26,7 @@ from qgis.core import (
   QgsProcessingAlgorithm,
   QgsProcessingContext,
   QgsFeatureIterator,
+  QgsProcessingUtils
 
 )
 from PyQt5.QtCore import *
@@ -45,6 +46,10 @@ class Layer:
         return self.layer
 
     # def setAttributes(self):
+    def getPath(self):
+        print(self.layer.source())
+        return self.layer.source()
+
 
     def makeSpatialIndex(self):
         spIndex = QgsSpatialIndex()
@@ -86,14 +91,12 @@ class Layer:
     def distansStrona(self, os):
         self.error = 0
         self.layer.startEditing()
-        # spIndex = km.makeSpatialIndex()
-        line_feats = [ feat for feat in os.getLayer().getFeatures() ] #os.getFeatures()
+        line_feats = [ feat for feat in os.getLayer().getFeatures() ] 
         layer_feats = [ feat for feat in self.layer.getFeatures() ]
         for feat in layer_feats:
             if feat.geometry() is not None:
                 dist_od_osi = 999999999
                 pos = ''
-                feat_to_point_geom = QgsGeometry()
                 pt = QgsPoint()
 
                 for line_feat in line_feats: #----->zabezpieczyć na wypadek pustej geometrii!!!<------
@@ -102,7 +105,6 @@ class Layer:
                         feat_to_point_geom_feature_temp = feat.geometry().nearestPoint(line_feat.geometry()) #najblizszy punkt na obiekcie
                         dist_od_osi_temp = QgsGeometry.distance(feat_to_point_geom_temp, feat.geometry())
                         if dist_od_osi_temp  < dist_od_osi:
-                            feat_to_point_geom = feat_to_point_geom_temp
                             pt = feat_to_point_geom_feature_temp.asPoint()
 
                             dist_od_osi = round(dist_od_osi_temp,1)
@@ -115,22 +117,19 @@ class Layer:
                                 pos = 'lewa'
                             else:
                                 pos = 'na osi'
-
                             if line_feat.geometry().crosses(feat.geometry()) or line_feat.geometry().intersects(feat.geometry()):
                                 pos = 'na osi'
-
-                            # nearestIds = spIndex.nearestNeighbor(feat_to_point_geom,1) # we need only one neighbour
                     else:
                         self.error = 3 #pusta geometria osi
             else:
                 self.error = 4 #pusta geometrai w warstwie przecinanej
             self.pt = pt
-            idx_dist_od_osi = self.layer.fields().indexFromName('dist_od_osi')
+            idx_dist_od_osi = self.layer.fields().lookupField('dist_od_osi')
             # print( self.layer.fields().names())
             feat[idx_dist_od_osi] = round(float(dist_od_osi),3)
 
             ###################
-            idx_strona = self.layer.fields().indexFromName('strona')
+            idx_strona = self.layer.fields().lookupField('strona')
             feat[idx_strona] = pos
 
             self.layer.updateFeature( feat )
@@ -144,10 +143,8 @@ class Layer:
         spIndex = km.makeSpatialIndex()
         layer_feats = [ feat for feat in self.layer.getFeatures() ]
         i=0
-        pt = self.pt
         for feat in layer_feats:
             # dist_od_osi = 999999999
-            pos = ''
             if pas_checked:
                 obszar_fts = pas.getLayer().getFeatures()
             else:
@@ -179,17 +176,13 @@ class Layer:
 
             intersections_fts = []
             #pętla po obszarach
-
             if not obszar_fts.isValid():
                 feat_ring = feat.geometry().convertToType(1,False) #wybranie granic poligonów inwentaryzacji w celu przecięć
-                print(feat.geometry().intersection(geoms.buffer(0.01,50)).isEmpty())
-                print(geoms.buffer(0.01,50))
 
                 if not feat.geometry().intersection(geoms.buffer(0.01,50)).isEmpty():
-                    intersections_fts.append(feat.geometry().intersection(geoms.buffer(0.01,50)))#          feat.geometry().buffer(0.01,50)) #dodanie oryginalnych obiektów do listy z przecięciami jeśli nie analizujemy pasa
-                # else:
-                #     intersections_fts.append(feat.geometry().buffer(0.01,50)) #dodanie oryginalnych obiektów do listy z przecięciami jeśli nie analizujemy pasa
-                przeciecia_pts = feat_ring.intersection(geoms.convertToType(5,False))#.buffer(0.01,50).convertToType(1,False)) #uzyskanie punktów przecięcia
+                    intersections_fts.append(feat.geometry().intersection(geoms.buffer(0.01,50))) #dodanie oryginalnych obiektów do listy z przecięciami jeśli nie analizujemy pasa
+                #dodanie oryginalnych obiektów do listy z przecięciami jeśli nie analizujemy pasa
+                przeciecia_pts = feat_ring.intersection(geoms.convertToType(5,False)) #uzyskanie punktów przecięcia
 
                 if not (przeciecia_pts.isEmpty()):
                     points = przeciecia_pts.asMultiPoint() #################### błąd typu osi
@@ -265,15 +258,15 @@ class Layer:
             przeciecia_km[0].clear()
             przeciecie_km_str = ''
 
-            print(intersections_fts)
+            #print(intersections_fts)
 
             if self.czyPolygon():
-                idx_powierzchnia = self.layer.fields().indexFromName('powierzchnia')
+                idx_powierzchnia = self.layer.fields().lookupField('powierzchnia')
                 feat[idx_powierzchnia] = round(feat.geometry().area(),3)
                 if pas_checked:
-                    idx_powierzchnia_przec = self.layer.fields().indexFromName('pow_prze')
+                    idx_powierzchnia_przec = self.layer.fields().lookupField('pow_prze')
                     feat[idx_powierzchnia_przec] = round(area,3)
-                    idx_procent = self.layer.fields().indexFromName('procent')
+                    idx_procent = self.layer.fields().lookupField('procent')
                     feat[idx_procent] = round(area*100/feat.geometry().area(),2)
                 if km_checked and os_checked:
                     if  len(intersections_fts)>0:
@@ -292,8 +285,8 @@ class Layer:
                                     przeciecia_km[liczba_obszarow].append(min(km_przeciec_obszaru))
                                     przeciecia_km[liczba_obszarow].append(max(km_przeciec_obszaru))
 
-                                    print(min(km_przeciec_obszaru))
-                                    print(max(km_przeciec_obszaru))
+                                    #print(min(km_przeciec_obszaru))
+                                    #print(max(km_przeciec_obszaru))
 
                                     for przeciecia_ft in przeciecia_fts.getFeatures():
                                         if intersection_geom.contains(przeciecia_ft.geometry()) or intersection_geom.intersects(przeciecia_ft.geometry()):
@@ -339,6 +332,8 @@ class Layer:
 
             if km_checked and os_checked:
                 i=1
+                idx_km = self.layer.fields().lookupField('km')
+
                 for przeciecie_km in przeciecia_km:
                     if len(przeciecie_km)>0:
                         przec_min = float(min(przeciecie_km))
@@ -347,16 +342,18 @@ class Layer:
                         if przec_min != przec_max:
                             przeciecie_km_str+= ' - '
                             przeciecie_km_str+= kmFormat(przec_max)
+                        elif len(przeciecia_km) == 1 and self.layer.fields().field(idx_km).type() != QVariant.String:
+                            przeciecie_km_str = przec_min
                         if len(przeciecia_km) != i: przeciecie_km_str+= ',  '
                     i+=1
-                idx_km = self.layer.fields().indexFromName('km')
+                
                 # print(idx_km)
                 # print(przeciecie_km_str)
                 feat[idx_km] = str(przeciecie_km_str)
 
             if pas_checked:
-                idx_czy_przecina = self.layer.fields().indexFromName('czy_przecina')
-                idx_dist_od_pasa = self.layer.fields().indexFromName('dist_od_pasa')
+                idx_czy_przecina = self.layer.fields().lookupField('czy_przecina')
+                idx_dist_od_pasa = self.layer.fields().lookupField('dist_od_pasa')
                 # print(idx_czy_przecina)
                 # print(pos_zakres)
                 feat[idx_czy_przecina] = pos_zakres
@@ -375,6 +372,7 @@ class LoadOuterLayers:
         # self.new_layers = []
         # self.sp_indexes = []
         # self.prefix = []
+
     def loadWFS(self):
         dsu = QgsDataSourceURI()
         dsu.setParam( 'url', 'http://wms.pcn.minambiente.it/ogc?map=/ms_ogc/wfs/Carta_geologica.map' )
@@ -402,13 +400,14 @@ class LoadLayers:
         self.new_layers = []
         self.sp_indexes = []
         self.prefix = []
-
+        self.context = QgsProcessingContext()
 
     def checkLayerValidity(self):
         wynik = 0
         layers_out = []
         for layer_klasa in self.layers:
             layer = layer_klasa.getLayer()
+            print(layer)
             if layer is not None and layer.featureCount()>0 and layer.isValid() and layer.isSpatial():
                 #przebiegnij po rekordach i zobaczy czy nie ma pustej geometrii, jeśli tak to błąd
                 for ft in layer.getFeatures():
@@ -442,16 +441,43 @@ class LoadLayers:
         return self.new_layers
 
     def loadLayer(self, layer, prefix):
-        layer_save = Layer(layer)
+        outputs = {}
+        
+        # Napraw geometrie
+        print('layer: '+str(layer.source()))
+        alg_params = {
+            'INPUT': layer.source(),
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['NaprawGeometrie'] = processing.run('native:fixgeometries', alg_params, context=self.context, is_child_algorithm=True)
+        
+        layer_napr = QgsProcessingUtils.mapLayerFromString(outputs['NaprawGeometrie']['OUTPUT'], self.context)  
+        layer_napr.setName(layer.name())
+
+        layer_save = Layer(layer_napr)
         layer_save.makePrefix(prefix)
         self.layers.append(layer_save)
         self.prefix.append(prefix)
-
+         
     def loadLayersFromStringList(self, layersStringList):
         self.layers = []
         for laer_orygin_str in layersStringList:  #weź listę plików
+
+            outputs = {}
+            # Napraw geometrie
+            alg_params = {
+                'INPUT': laer_orygin_str,
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            }    
+            outputs['NaprawGeometrie'] = processing.run('native:fixgeometries', alg_params, context=self.context, is_child_algorithm=True)
+
+            #laer_orygin_str_napr = outputs['NaprawGeometrie']['OUTPUT']
+
             filename = ntpath.basename(laer_orygin_str) #wyodrębnij nazwę pliku z warstwą
-            layer = QgsVectorLayer(laer_orygin_str, filename, "ogr") #twórz warstwę
+            #layer = QgsVectorLayer(laer_orygin_str_napr, filename, "ogr") #twórz warstwę
+
+            layer = QgsProcessingUtils.mapLayerFromString(outputs['NaprawGeometrie']['OUTPUT'], self.context)
+            layer.setName(filename)
 
             prefix = re.findall('\A[a-zA-Z0-9]+_', filename)[0] if len(re.findall('\A[a-zA-Z0-9]+_', filename))>0 else '_'
             layer_save = Layer(layer)
@@ -514,49 +540,49 @@ class LoadLayers:
             if 'id' not in field_names:
                 field = QgsField( 'id', QVariant.String )
                 layer.addAttribute( field )
-            idx_id = layer.fields().indexFromName('id') #pobierz id koolumny żeby później uzupełnić
+            idx_id = layer.fields().lookupField('id') #pobierz id koolumny żeby później uzupełnić
 
             if ('strona' not in field_names) and (km_checked and os_checked):
             	field = QgsField( 'strona', QVariant.String )
             	layer.addAttribute( field )
-            idx_strona = layer.fields().indexFromName('strona') #pobierz id koolumny żeby później uzupełnić
+            idx_strona = layer.fields().lookupField('strona') #pobierz id koolumny żeby później uzupełnić
 
             if ('km' not in field_names) and (km_checked and os_checked):
             	field = QgsField( 'km', QVariant.String )
             	layer.addAttribute( field )
-            idx_km = layer.fields().indexFromName('km')
+            idx_km = layer.fields().lookupField('km')
 
             if ('dist_od_osi' not in field_names) and (km_checked and os_checked):
             	field = QgsField( 'dist_od_osi', QVariant.String )
             	layer.addAttribute( field )
-            idx_dist_od_osi = layer.fields().indexFromName('dist_od_osi')
+            idx_dist_od_osi = layer.fields().lookupField('dist_od_osi')
 
             if ('dist_od_pasa' not in field_names) and pas_checked:
             	field = QgsField( 'dist_od_pasa', QVariant.String )
             	layer.addAttribute( field )
-            idx_dist_od_pasa = layer.fields().indexFromName('dist_od_pasa')
+            idx_dist_od_pasa = layer.fields().lookupField('dist_od_pasa')
 
             if ('czy_przecina' not in field_names) and pas_checked:
             	field = QgsField( 'czy_przecina', QVariant.String )
             	layer.addAttribute( field )
-            idx_czy_przecina = layer.fields().indexFromName('czy_przecina')
+            idx_czy_przecina = layer.fields().lookupField('czy_przecina')
 
             #pola jedynie dla poligonów
             if polygon == True:
                 if ('powierzchnia'  not in field_names):
                 	field = QgsField( 'powierzchnia', QVariant.Double )
                 	layer.addAttribute( field )
-                powierzchnia = layer.fields().indexFromName('powierzchnia')
+                powierzchnia = layer.fields().lookupField('powierzchnia')
 
                 if ('pow_prze' not in field_names) and pas_checked:
                 	field = QgsField( 'pow_prze', QVariant.Double )
                 	layer.addAttribute( field )
-                powierzchnia_przec = layer.fields().indexFromName('pow_prze')
+                powierzchnia_przec = layer.fields().lookupField('pow_prze')
 
                 if ('procent' not in field_names) and pas_checked:
                 	field = QgsField( 'procent', QVariant.Double )
                 	layer.addAttribute( field )
-                procent = layer.fields().indexFromName('procent')
+                procent = layer.fields().lookupField('procent')
 
             id2=0
             for f in layer.getFeatures():
@@ -583,6 +609,8 @@ class ZlaczWarianty:
 
         self.results = {}
         self.outputs = {}
+
+
     def mergeLayers(self, output):
         path1 = None
         path2 = None
@@ -655,3 +683,62 @@ class ZlaczWarianty:
         self.results['Wynik'] = self.outputs['ZczAtrybutyWedugWartociPola']['OUTPUT']
 
         return self.results['Wynik']
+
+class ObrobkaWarstw:
+    def __init__(self):
+        self.prefix = []
+        self.paths = []
+        #self.conte
+
+    def dodaj_atrybut_z_warstwy(self, layer_info, fieldname, layerpath, context = QgsProcessingContext()):
+        # Kalkulator pól
+        outputs = {}
+
+        # Przelicz układ współrzędnych warstwy
+        alg_params = {
+            'INPUT': layer_info,
+            'OPERATION': '',
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:2180'),
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['PrzeliczUkadWsprzdnychWarstwy'] = processing.runAndLoadResults('native:reprojectlayer', alg_params, context=context)
+
+        alg_params = {
+            'FIELD_LENGTH': 255,
+            'FIELD_NAME': 'pole_dod',
+            'FIELD_PRECISION': 0,
+            'FIELD_TYPE': 2,  # tekst
+            'FORMULA': ''' overlay_nearest( layer:=\'{lay}\', expression:=\"{fieldname}\")[0]'''.format(lay = outputs['PrzeliczUkadWsprzdnychWarstwy']['OUTPUT'], fieldname = fieldname),
+            'INPUT': layerpath,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        print(alg_params['FORMULA'])
+        outputs['KalkulatorPl'] = processing.run('native:fieldcalculator', alg_params, context=context, is_child_algorithm=True)
+        return [context, outputs['KalkulatorPl']['OUTPUT']]
+
+
+class OcenyPlatow:
+    def __init__(self):
+        self.prefix = []
+        self.paths = []
+        #self.conte
+
+    def licz_oceny(self, layerpath, context = QgsProcessingContext()):
+        # Kalkulator pól
+        outputs = {}
+        alg_params = {
+            'FIELD_LENGTH': 2,
+            'FIELD_NAME': 'ocena',
+            'FIELD_PRECISION': 0,
+            'FIELD_TYPE': 1,  # liczba całkowita
+            'FORMULA': '''case when 1=1 then case when "stan" like\'%U1%\' then case when "procent" = 0 then 0 else case when "procent" < 20 then -1 else case when "procent" < 50 then -2 else -3 end end end else case when "stan" like\'%U2%\' then case when "procent" = 0 then 0 else case when "procent" < 20 then -2 else -3 end end else case when "procent" = 0 then 0 else case when "procent" < 20 then -1 else case when "procent" < 50 then -2 else -3 end end end end end else case when 1=0 then case when "stan" like\'%U1%\' then case when "procent" < 20 then -1 else case when "procent" < 50 then -2 else -3 end end else case when "stan" like\'%U2%\' then case when "procent" < 20 then -2 else -3 end else case when "procent" < 20 then -1 else case when "procent" < 50 then -2 else -3 end end end end end end''',
+            'INPUT': layerpath,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['KalkulatorPl'] = processing.run('native:fieldcalculator', alg_params, context=context, is_child_algorithm=True)
+        return [context, outputs['KalkulatorPl']['OUTPUT']]
+
+
+
+        # print(self.prefix)
+        # print(self.paths)
