@@ -26,7 +26,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>2</number>
    </property>
    <widget class="QWidget" name="tab">
     <attribute name="title">
@@ -530,6 +530,9 @@
     </widget>
    </widget>
    <widget class="QWidget" name="tab_5">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <attribute name="title">
      <string>Oceny</string>
     </attribute>
@@ -578,14 +581,14 @@
    </widget>
    <widget class="QWidget" name="tab_2">
     <property name="enabled">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <attribute name="title">
      <string>Teren</string>
     </attribute>
     <widget class="QGroupBox" name="checkbox_analiza_terenu">
      <property name="enabled">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
      <property name="geometry">
       <rect>
